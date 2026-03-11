@@ -6,6 +6,7 @@ import Fuse from 'fuse.js'
 export default function FacultySearchPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [students, setStudents] = useState([])
+  const [totalUniqueEvents, setTotalUniqueEvents] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -21,6 +22,7 @@ export default function FacultySearchPage() {
         }
         const data = await response.json()
         setStudents(data.students || [])
+        setTotalUniqueEvents(data.totalUniqueEvents || 0)
         
         // Initialize Fuse.js for fuzzy search
         const fuseOptions = {
@@ -84,9 +86,10 @@ export default function FacultySearchPage() {
       compliantStudents,
       nonCompliantStudents,
       totalEvents,
-      averageEvents
+      averageEvents,
+      totalUniqueEvents
     }
-  }, [students])
+  }, [students, totalUniqueEvents])
 
   if (loading) {
     return (
@@ -155,8 +158,8 @@ export default function FacultySearchPage() {
             <p className="text-2xl font-bold text-red-600">{stats.nonCompliantStudents}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <p className="text-sm text-gray-600">Total Events</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.totalEvents}</p>
+            <p className="text-sm text-gray-600">Unique Events</p>
+            <p className="text-2xl font-bold text-blue-600">{totalUniqueEvents}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <p className="text-sm text-gray-600">Avg Events/Student</p>
