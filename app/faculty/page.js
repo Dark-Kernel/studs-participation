@@ -2,26 +2,180 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Fuse from 'fuse.js'
+import FileUpload from '@/app/components/FileUpload'
 
 export default function FacultySearchPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [students, setStudents] = useState([])
+  const [uploadedData, setUploadedData] = useState([])
   const [totalUniqueEvents, setTotalUniqueEvents] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [fuse, setFuse] = useState(null)
+  const [fuseInitialized, setFuseInitialized] = useState(false)
+
+  // Merge uploaded data with Supabase data
+  const mergeData = useCallback((existingStudents, newUploadData) => {
+    const studentsMap = new Map()
+    
+    // Add existing Supabase students (convert events array to Map)
+    existingStudents.forEach(student => {
+      const key = student.email?.toLowerCase() || student.name?.toLowerCase()
+      if (key) {
+        // Convert events array to Map if needed
+        const eventsMap = new Map()
+        if (Array.isArray(student.events)) {
+          student.events.forEach(event => {
+            const eventKey = event.eventCode || event.eventName
+            eventsMap.set(eventKey, event)
+          })
+        }
+        
+        studentsMap.set(key, {
+          ...student,
+          events: eventsMap,
+          sources: ['supabase']
+        })
+      }
+    })
+    
+    // Merge uploaded participants
+    newUploadData.forEach(upload => {
+      upload.participants.forEach(participant => {
+        const email = participant.email?.toLowerCase() || null
+        const normalizedName = participant.name?.toLowerCase().trim() || ''
+        const nameKey = normalizedName.split(/\s+/).sort().join(' ')
+        
+        // Try to find by email first, then by normalized name
+        let key = email || nameKey
+        
+        if (!studentsMap.has(key)) {
+          studentsMap.set(key, {
+            name: participant.name,
+            email: participant.email || 'Not provided',
+            events: new Map(),
+            eventCount: 0,
+            sources: []
+          })
+        }
+        
+        const student = studentsMap.get(key)
+        
+        // Track source
+        if (!student.sources.includes(upload.platform)) {
+          student.sources.push(upload.platform)
+        }
+        
+        // Add event if not already present
+        const eventKey = participant.code || participant.event
+        if (!student.events.has(eventKey)) {
+          student.events.set(eventKey, {
+            eventName: participant.event,
+            eventCode: participant.code,
+            platform: upload.platform,
+            teamName: participant.teamName,
+            registrationTime: participant.registrationTime,
+            imageUrl: null
+          })
+        }
+      })
+    })
+    
+    // Convert to array
+    return Array.from(studentsMap.values()).map(student => ({
+      name: student.name,
+      email: student.email,
+      eventCount: student.events.size,
+      events: Array.from(student.events.values()).sort((a, b) => 
+        new Date(b.registrationTime || 0) - new Date(a.registrationTime || 0)
+      ),
+      sources: student.sources
+    }))
+  }, [])
+
+  // Update Fuse when students change
+  useEffect(() => {
+    if (students.length > 0 && !fuseInitialized) {
+      const fuseOptions = {
+        keys: ['name', 'email'],
+        threshold: 0.4,
+        distance: 100,
+        includeScore: true,
+        includeMatches: true,
+      }
+      setFuse(new Fuse(students, fuseOptions))
+      setFuseInitialized(true)
+    }
+  }, [students, fuseInitialized])
+
+  // Handle upload callback - save to localStorage
+  const handleUpload = useCallback((result) => {
+    setUploadedData(prev => {
+      const newData = [...prev, result]
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('itsa_uploaded_data', JSON.stringify(newData))
+      } catch (e) {
+        console.warn('Could not save to localStorage:', e)
+      }
+      
+      // Merge with existing students
+      const mergedStudents = mergeData(students, newData)
+      setStudents(mergedStudents)
+      
+      // Reinitialize Fuse with new data
+      setFuseInitialized(false)
+      
+      alert(`Successfully uploaded ${result.count} participants for ${result.eventName}`)
+      return newData
+    })
+  }, [students, mergeData])
+
+  // Clear uploaded data
+  const clearUploadedData = useCallback(() => {
+    if (confirm('Are you sure you want to clear all uploaded data? This cannot be undone.')) {
+      setUploadedData([])
+      localStorage.removeItem('itsa_uploaded_data')
+      // Re-fetch Supabase data
+      window.location.reload()
+    }
+  }, [])
 
   // Fetch students data on mount
   useEffect(() => {
     const fetchStudents = async () => {
       try {
+        // Fetch Supabase data
         const response = await fetch('/api/students')
         if (!response.ok) {
           throw new Error('Failed to fetch students')
         }
         const data = await response.json()
-        setStudents(data.students || [])
+        const supabaseStudents = data.students || []
+        
+        // Load saved uploads from localStorage
+        let savedUploads = []
+        try {
+          const saved = localStorage.getItem('itsa_uploaded_data')
+          if (saved) {
+            savedUploads = JSON.parse(saved)
+          }
+        } catch (e) {
+          console.warn('Could not load saved uploads:', e)
+        }
+        
+        // Merge Supabase with saved uploads
+        setUploadedData(savedUploads)
+        
+        if (savedUploads.length > 0) {
+          const merged = mergeData(supabaseStudents, savedUploads)
+          setStudents(merged)
+        } else {
+          setStudents(supabaseStudents)
+        }
+        
         setTotalUniqueEvents(data.totalUniqueEvents || 0)
         
         // Initialize Fuse.js for fuzzy search
@@ -166,6 +320,34 @@ export default function FacultySearchPage() {
             <p className="text-2xl font-bold text-purple-600">{stats.averageEvents}</p>
           </div>
         </div>
+
+        {/* Uploaded Data Status */}
+        {uploadedData.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-blue-900">
+                  📂 Loaded {uploadedData.length} uploaded file{uploadedData.length !== 1 ? 's' : ''} from storage
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  {uploadedData.map(u => u.eventName).join(', ')}
+                </p>
+              </div>
+              <button
+                onClick={clearUploadedData}
+                className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* File Upload Section */}
+        <FileUpload 
+          onUpload={handleUpload} 
+          disabled={loading} 
+        />
 
         {/* Search Bar */}
         <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
