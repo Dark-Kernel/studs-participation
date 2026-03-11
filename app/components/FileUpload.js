@@ -91,7 +91,7 @@ export default function FileUpload({ onUpload, disabled }) {
     formData.append('eventCode', eventCode)
 
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/api/r2', {
         method: 'POST',
         body: formData
       })

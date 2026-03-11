@@ -109,17 +109,10 @@ export default function FacultySearchPage() {
     }
   }, [students, fuseInitialized])
 
-  // Handle upload callback - save to localStorage
+  // Handle upload callback - save to R2 and update state
   const handleUpload = useCallback((result) => {
     setUploadedData(prev => {
       const newData = [...prev, result]
-      
-      // Save to localStorage
-      try {
-        localStorage.setItem('itsa_uploaded_data', JSON.stringify(newData))
-      } catch (e) {
-        console.warn('Could not save to localStorage:', e)
-      }
       
       // Merge with existing students
       const mergedStudents = mergeData(students, newData)
@@ -128,10 +121,70 @@ export default function FacultySearchPage() {
       // Reinitialize Fuse with new data
       setFuseInitialized(false)
       
-      alert(`Successfully uploaded ${result.count} participants for ${result.eventName}`)
+      // Refresh unique events count
+      const allEvents = new Set()
+      mergedStudents.forEach(s => {
+        s.events?.forEach(e => {
+          allEvents.add(e.eventName?.toLowerCase())
+        })
+      })
+      setTotalUniqueEvents(allEvents.size)
+      
+      alert(`Successfully uploaded ${result.count} participants for ${result.eventName}. Data will load automatically on next page visit.`)
       return newData
     })
   }, [students, mergeData])
+
+  // Refresh data from R2
+  const refreshFromR2 = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/students')
+      const supabaseData = await response.json()
+      
+      const r2Response = await fetch('/api/r2/parse', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const text = await r2Response.text()
+      let r2Data = { participants: [], files: [] }
+      if (text && r2Response.ok) {
+        try {
+          r2Data = JSON.parse(text)
+        } catch (e) {
+          console.warn('Failed to parse R2 response')
+        }
+      }
+      
+      // Convert to upload format
+      const r2Uploads = []
+      if (r2Data.files?.length > 0) {
+        const eventGroups = {}
+        r2Data.participants?.forEach(p => {
+          const code = p.code || p.event
+          if (!eventGroups[code]) {
+            eventGroups[code] = { eventName: code.replace(/_/g, ' '), eventCode: code, platform: p.platform, participants: [] }
+          }
+          eventGroups[code].participants.push(p)
+        })
+        Object.values(eventGroups).forEach(g => r2Uploads.push(g))
+      }
+      
+      setUploadedData(r2Uploads)
+      const merged = mergeData(supabaseData.students || [], r2Uploads)
+      setStudents(merged)
+      
+      const allEvents = new Set()
+      merged.forEach(s => s.events?.forEach(e => allEvents.add(e.eventName?.toLowerCase())))
+      setTotalUniqueEvents(allEvents.size)
+      
+      setFuse(new Fuse(merged, { keys: ['name', 'email'], threshold: 0.4 }))
+    } catch (err) {
+      alert('Error refreshing: ' + err.message)
+    }
+    setLoading(false)
+  }, [])
 
   // Clear uploaded data
   const clearUploadedData = useCallback(() => {
@@ -143,40 +196,81 @@ export default function FacultySearchPage() {
     }
   }, [])
 
-  // Fetch students data on mount
+  // Fetch students data on mount - load from R2 first
   useEffect(() => {
     const fetchStudents = async () => {
       try {
         // Fetch Supabase data
-        const response = await fetch('/api/students')
-        if (!response.ok) {
-          throw new Error('Failed to fetch students')
+        const supabaseResponse = await fetch('/api/students')
+        if (!supabaseResponse.ok) {
+          throw new Error('Failed to fetch Supabase data')
         }
-        const data = await response.json()
-        const supabaseStudents = data.students || []
+        const supabaseData = await supabaseResponse.json()
+        const supabaseStudents = supabaseData.students || []
         
-        // Load saved uploads from localStorage
-        let savedUploads = []
+        // Try to fetch from R2
+        let r2Data = { participants: [], files: [] }
         try {
-          const saved = localStorage.getItem('itsa_uploaded_data')
-          if (saved) {
-            savedUploads = JSON.parse(saved)
+          const r2Response = await fetch('/api/r2/parse', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          })
+          const text = await r2Response.text()
+          if (text && r2Response.ok) {
+            try {
+              r2Data = JSON.parse(text)
+              console.log(`Loaded ${r2Data.participants?.length || 0} participants from R2`)
+            } catch (parseErr) {
+              console.warn('R2 response parse error:', parseErr.message)
+            }
           }
-        } catch (e) {
-          console.warn('Could not load saved uploads:', e)
+        } catch (r2Error) {
+          console.warn('R2 not available or empty:', r2Error.message)
         }
         
-        // Merge Supabase with saved uploads
-        setUploadedData(savedUploads)
-        
-        if (savedUploads.length > 0) {
-          const merged = mergeData(supabaseStudents, savedUploads)
-          setStudents(merged)
-        } else {
-          setStudents(supabaseStudents)
+        // Convert R2 participants to upload format
+        const r2Uploads = []
+        if (r2Data.files && r2Data.files.length > 0) {
+          // Group by event code
+          const eventGroups = {}
+          r2Data.participants?.forEach(p => {
+            const code = p.code || p.event
+            if (!eventGroups[code]) {
+              eventGroups[code] = {
+                eventName: code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                eventCode: code,
+                platform: p.platform,
+                participants: []
+              }
+            }
+            eventGroups[code].participants.push(p)
+          })
+          
+          Object.values(eventGroups).forEach(group => {
+            r2Uploads.push(group)
+          })
         }
         
-        setTotalUniqueEvents(data.totalUniqueEvents || 0)
+        setUploadedData(r2Uploads)
+        
+        // Merge all data sources
+        let mergedStudents = supabaseStudents
+        
+        if (r2Uploads.length > 0) {
+          mergedStudents = mergeData(supabaseStudents, r2Uploads)
+        }
+        
+        setStudents(mergedStudents)
+        
+        // Calculate unique events
+        const allEvents = new Set()
+        mergedStudents.forEach(s => {
+          s.events?.forEach(e => {
+            allEvents.add(e.eventName?.toLowerCase())
+          })
+        })
+        setTotalUniqueEvents(allEvents.size)
         
         // Initialize Fuse.js for fuzzy search
         const fuseOptions = {
@@ -186,9 +280,10 @@ export default function FacultySearchPage() {
           includeScore: true,
           includeMatches: true,
         }
-        setFuse(new Fuse(data.students || [], fuseOptions))
+        setFuse(new Fuse(mergedStudents, fuseOptions))
         setLoading(false)
       } catch (err) {
+        console.error('Error fetching data:', err)
         setError(err.message)
         setLoading(false)
       }
@@ -327,19 +422,30 @@ export default function FacultySearchPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-blue-900">
-                  📂 Loaded {uploadedData.length} uploaded file{uploadedData.length !== 1 ? 's' : ''} from storage
+                  ☁️ Loaded {uploadedData.length} event{uploadedData.length !== 1 ? 's' : ''} from Cloud Storage
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  {uploadedData.map(u => u.eventName).join(', ')}
+                  {uploadedData.map(u => `${u.eventName} (${u.participants?.length || 0} participants)`).join(', ')}
                 </p>
               </div>
-              <button
-                onClick={clearUploadedData}
-                className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-              >
-                Clear All
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={refreshFromR2}
+                  className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* No R2 data loaded - show prompt */}
+        {uploadedData.length === 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <p className="text-yellow-800">
+              ℹ️ No event data loaded from cloud. Upload CSV files below to get started.
+            </p>
           </div>
         )}
 
