@@ -132,21 +132,22 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
+    <div className="p-6 rounded-lg border mb-8" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+      <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
         Upload Event Participants (Unstop / Scrollconnect)
       </h2>
       
       {/* Event Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
             Event Name *
           </label>
           <select
             value={isCustomEvent ? 'custom' : eventName}
             onChange={handleEventChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 rounded-lg border"
+            style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--foreground)' }}
             disabled={disabled || parsing}
           >
             <option value="">Select an event...</option>
@@ -164,7 +165,8 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder="Enter custom event name"
-              className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full mt-2 px-3 py-2 rounded-lg border"
+              style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--foreground)' }}
               disabled={disabled || parsing}
               autoFocus
             />
@@ -172,18 +174,17 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
             Event Code (Auto-filled)
           </label>
           <input
             type="text"
             value={eventCode}
-            onChange={(e) => setEventCode(e.target.value)}
-            placeholder="e.g., minds_on_machines"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
-            disabled={true}
+            readOnly
+            className="w-full px-3 py-2 rounded-lg border"
+            style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--foreground)' }}
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>
             {isCustomEvent ? 'Auto-generated from event name' : 'Auto-filled from selected event'}
           </p>
         </div>
@@ -193,9 +194,10 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
       <div
         className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           dragActive 
-            ? 'border-blue-500 bg-blue-50' 
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-blue-500' 
+            : 'border-gray-600'
         }`}
+        style={{ borderColor: dragActive ? 'var(--primary)' : 'var(--card-border)' }}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -212,14 +214,15 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
         
         {file ? (
           <div className="space-y-2">
-            <div className="text-4xl mb-2">📄</div>
-            <p className="text-gray-900 font-medium">{file.name}</p>
-            <p className="text-sm text-gray-500">
+            <div className="text-4xl mb-2" style={{ color: 'var(--primary)' }}>#</div>
+            <p style={{ color: 'var(--foreground)' }} className="font-medium">{file.name}</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {(file.size / 1024).toFixed(1)} KB
             </p>
             <button
               onClick={() => setFile(null)}
-              className="text-red-600 hover:text-red-800 text-sm font-medium mt-2"
+              className="text-sm font-medium mt-2"
+              style={{ color: '#ef4444' }}
               disabled={parsing}
             >
               Remove file
@@ -227,16 +230,17 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
           </div>
         ) : (
           <div>
-            <div className="text-4xl mb-2">📁</div>
-            <p className="text-gray-700 mb-2">
+            <div className="text-4xl mb-2" style={{ color: 'var(--text-dim)' }}>+</div>
+            <p className="mb-2" style={{ color: 'var(--foreground)' }}>
               Drag and drop your CSV or Excel file here
             </p>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
               Supports: Unstop and Scrollconnect exports
             </p>
             <button
               onClick={onButtonClick}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              style={{ background: 'var(--primary)', color: 'white' }}
               disabled={disabled || parsing}
             >
               Browse Files
@@ -251,11 +255,12 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
           <button
             onClick={handleSubmit}
             disabled={!eventName || !eventCode || parsing || disabled}
-            className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full px-4 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            style={{ background: '#22c55e', color: 'white' }}
           >
             {parsing ? (
               <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5" style={{ color: 'white' }} fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -268,7 +273,7 @@ export default function FileUpload({ onUpload, disabled, isReplace = false, repl
         </div>
       )}
 
-      <div className="mt-4 text-sm text-gray-500">
+      <div className="mt-4 text-sm" style={{ color: 'var(--text-muted)' }}>
         <p className="font-medium mb-1">Supported formats:</p>
         <ul className="list-disc list-inside space-y-1">
           <li><strong>Unstop:</strong> CSV exports with Team ID, Candidate's Name, Email columns</li>

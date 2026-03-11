@@ -422,10 +422,10 @@ export default function FacultySearchPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading student data...</p>
+          <div className="animate-spin rounded-full h-12 w-12 mx-auto mb-4" style={{ borderBottomColor: 'var(--primary)' }}></div>
+          <p style={{ color: 'var(--text-muted)' }}>Loading student data...</p>
         </div>
       </div>
     )
@@ -433,14 +433,15 @@ export default function FacultySearchPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md text-center">
-          <div className="text-red-600 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Data</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
+        <div className="p-8 rounded-lg border max-w-md text-center" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+          <div className="text-5xl mb-4" style={{ color: 'var(--danger)' }}>!</div>
+          <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--foreground)' }}>Error Loading Data</h2>
+          <p className="mb-4" style={{ color: 'var(--text-muted)' }}>{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 rounded-lg transition-colors"
+            style={{ background: 'var(--primary)', color: 'white' }}
           >
             Retry
           </button>
@@ -452,20 +453,20 @@ export default function FacultySearchPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="border-b" style={{ borderColor: 'var(--card-border)', background: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>
                 ITSA Events Board
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p style={{ color: 'var(--text-muted)' }} className="mt-1">
                 Faculty Portal - Student Event Participation Search
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Information Technology Department</p>
-              <p className="text-sm text-gray-500">HOD Requirement: Minimum 2 events per semester</p>
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>Information Technology Student Association</p>
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}></p>
             </div>
           </div>
         </div>
@@ -474,35 +475,35 @@ export default function FacultySearchPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <p className="text-sm text-gray-600">Total Students</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+          <div className="bg-[var(--card-bg)] p-4 rounded-lg border">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Total Students</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{stats.totalStudents}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <p className="text-sm text-gray-600">Compliant (≥2 events)</p>
-            <p className="text-2xl font-bold text-green-600">{stats.compliantStudents}</p>
+          <div className="bg-[var(--card-bg)] p-4 rounded-lg border">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Compliant (≥2 events)</p>
+            <p className="text-2xl font-bold" style={{ color: '#22c55e' }}>{stats.compliantStudents}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <p className="text-sm text-gray-600">Non-Compliant</p>
-            <p className="text-2xl font-bold text-red-600">{stats.nonCompliantStudents}</p>
+          <div className="bg-[var(--card-bg)] p-4 rounded-lg border">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Non-Compliant</p>
+            <p className="text-2xl font-bold" style={{ color: '#ef4444' }}>{stats.nonCompliantStudents}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <p className="text-sm text-gray-600">Unique Events</p>
-            <p className="text-2xl font-bold text-blue-600">{totalUniqueEvents}</p>
+          <div className="bg-[var(--card-bg)] p-4 rounded-lg border">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Unique Events</p>
+            <p className="text-2xl font-bold" style={{ color: '#3b82f6' }}>{totalUniqueEvents}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <p className="text-sm text-gray-600">Avg Events/Student</p>
-            <p className="text-2xl font-bold text-purple-600">{stats.averageEvents}</p>
+          <div className="bg-[var(--card-bg)] p-4 rounded-lg border">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Avg Events/Student</p>
+            <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>{stats.averageEvents}</p>
           </div>
         </div>
 
         {/* Uploaded Data Status - Collapsible List */}
         {uploadedData.length > 0 && (
-          <div className="bg-white border rounded-lg mb-6 overflow-hidden">
-            <div className="bg-blue-50 px-4 py-3 border-b flex items-center justify-between">
+          <div className="rounded-lg mb-6 overflow-hidden border" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+            <div className="px-4 py-3 border-b flex items-center justify-between" style={{ background: 'var(--input-bg)', borderColor: 'var(--card-border)' }}>
               <div className="flex items-center gap-2">
-                <span className="text-lg">☁️</span>
-                <span className="font-medium text-blue-900">
+                <span className="text-lg" style={{ color: 'var(--primary)' }}>CLOUD</span>
+                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
                   Loaded Events ({uploadedData.length})
                 </span>
               </div>
@@ -519,19 +520,22 @@ export default function FacultySearchPage() {
                       alert('Error: ' + e.message)
                     }
                   }}
-                  className="px-3 py-1 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded transition-colors"
+                  className="px-3 py-1 text-sm rounded transition-colors"
+                  style={{ color: '#a855f7' }}
                 >
-                  🔍 Scan R2
+                  Scan R2
                 </button>
                 <button
                   onClick={refreshFromR2}
-                  className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                  className="px-3 py-1 text-sm rounded transition-colors"
+                  style={{ color: '#3b82f6' }}
                 >
-                  🔄 Refresh
+                  Refresh
                 </button>
                 <button
                   onClick={() => setShowUploadModal(true)}
-                  className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded transition-colors"
+                  className="px-3 py-1 text-sm rounded transition-colors"
+                  style={{ background: '#22c55e', color: 'white' }}
                 >
                   + Add New Event
                 </button>
@@ -553,10 +557,10 @@ export default function FacultySearchPage() {
 
         {/* No R2 data loaded - show prompt */}
         {uploadedData.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+          <div className="rounded-lg p-6 mb-6 border" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
             <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-yellow-800">
-                ℹ️ No event data loaded from cloud.
+              <p style={{ color: 'var(--foreground)' }}>
+                No event data loaded from cloud.
               </p>
               <div className="flex gap-3">
                 <button
@@ -570,13 +574,15 @@ export default function FacultySearchPage() {
                       alert('Error: ' + e.message)
                     }
                   }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="px-4 py-2 rounded-lg transition-colors"
+                  style={{ background: '#a855f7', color: 'white' }}
                 >
-                  🔍 Scan R2 for Existing Files
+                  Scan R2 for Existing Files
                 </button>
                 <button
                   onClick={() => setShowUploadModal(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="px-4 py-2 rounded-lg transition-colors"
+                  style={{ background: '#22c55e', color: 'white' }}
                 >
                   + Upload New Event
                 </button>
@@ -587,27 +593,28 @@ export default function FacultySearchPage() {
 
         {/* Upload Modal */}
         {showUploadModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)' }}>
+            <div className="rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {replacingEventIdx !== null ? '🔄 Replace Event Data' : '📤 Upload Event Data'}
+                  <h2 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
+                    {replacingEventIdx !== null ? 'Replace Event Data' : 'Upload Event Data'}
                   </h2>
                   <button
                     onClick={() => {
                       setShowUploadModal(false)
                       setReplacingEventIdx(null)
                     }}
-                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                    className="text-2xl"
+                    style={{ color: 'var(--text-dim)' }}
                   >
-                    ×
+                    x
                   </button>
                 </div>
                 
                 {replacingEventIdx !== null && uploadedData[replacingEventIdx] && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-orange-800">
+                  <div className="rounded-lg p-3 mb-4 border" style={{ background: 'rgba(249, 115, 22, 0.1)', borderColor: '#f97316' }}>
+                    <p className="text-sm" style={{ color: '#f97316' }}>
                       <strong>Replacing:</strong> {uploadedData[replacingEventIdx].eventName}
                       <br />
                       <span className="text-xs">({uploadedData[replacingEventIdx].participants?.length} participants will be replaced)</span>
@@ -627,8 +634,8 @@ export default function FacultySearchPage() {
         )}
 
         {/* Search Bar */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-[var(--card-bg)] p-6 rounded-lg border mb-8">
+          <label htmlFor="search" className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground)' }}>
             Search Students
           </label>
           <div className="relative">
@@ -638,10 +645,16 @@ export default function FacultySearchPage() {
               placeholder="Enter student name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="w-full px-4 py-3 pl-12 rounded-lg border transition-all"
+              style={{ 
+                background: 'var(--input-bg)', 
+                borderColor: 'var(--input-border)',
+                color: 'var(--foreground)'
+              }}
             />
             <svg
-              className="absolute left-4 top-3.5 h-5 w-5 text-gray-400"
+              className="absolute left-4 top-3.5 h-5 w-5"
+              style={{ color: 'var(--text-dim)' }}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -654,12 +667,12 @@ export default function FacultySearchPage() {
               />
             </svg>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
             {searchQuery ? (
               <span>
                 Found {filteredStudents.length} result{filteredStudents.length !== 1 ? 's' : ''} 
                 {filteredStudents.length > 0 && filteredStudents[0].score !== undefined && (
-                  <span className="ml-2 text-blue-600">
+                  <span className="ml-2" style={{ color: 'var(--primary)' }}>
                     (Best match: {((1 - filteredStudents[0].score) * 100).toFixed(0)}% similarity)
                   </span>
                 )}
@@ -676,21 +689,22 @@ export default function FacultySearchPage() {
             <div
               key={index}
               onClick={() => handleStudentClick(student)}
-              className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
+              className="p-6 rounded-lg border hover:shadow-md transition-shadow cursor-pointer"
+              style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
                     {student.name}
                   </h3>
-                  <p className="text-sm text-gray-600">{student.email}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{student.email}</p>
                 </div>
                 <div
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    student.eventCount >= 2
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}
+                  className={`px-3 py-1 rounded-full text-sm font-medium`}
+                  style={{
+                    background: student.eventCount >= 2 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    color: student.eventCount >= 2 ? '#22c55e' : '#ef4444'
+                  }}
                 >
                   {student.eventCount} event{student.eventCount !== 1 ? 's' : ''}
                 </div>
@@ -698,21 +712,19 @@ export default function FacultySearchPage() {
 
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-600">Participation</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Participation</span>
                   <span
-                    className={`font-medium ${
-                      student.eventCount >= 2 ? 'text-green-600' : 'text-red-600'
-                    }`}
+                    className="font-medium"
+                    style={{ color: student.eventCount >= 2 ? '#22c55e' : '#ef4444' }}
                   >
-                    {student.eventCount >= 2 ? '✓ Compliant' : '✗ Needs more'}
+                    {student.eventCount >= 2 ? '[OK] Compliant' : '[!] Needs more'}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full rounded-full h-2" style={{ background: 'var(--input-bg)' }}>
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      student.eventCount >= 2 ? 'bg-green-500' : 'bg-red-500'
-                    }`}
+                    className="h-2 rounded-full transition-all"
                     style={{
+                      background: student.eventCount >= 2 ? '#22c55e' : '#ef4444',
                       width: `${Math.min((student.eventCount / 2) * 100, 100)}%`
                     }}
                   ></div>
@@ -720,13 +732,14 @@ export default function FacultySearchPage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">Recent Events:</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Recent Events:</p>
                 {student.events.slice(0, 3).map((event, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center text-sm text-gray-600"
+                    className="flex items-center text-sm"
+                    style={{ color: 'var(--text-muted)' }}
                   >
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                    <span className="w-2 h-2 rounded-full mr-2" style={{ background: '#3b82f6' }}></span>
                     <span className="truncate">{event.eventName}</span>
                   </div>
                 ))}
@@ -749,11 +762,11 @@ export default function FacultySearchPage() {
         {/* Empty State */}
         {filteredStudents.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <div className="text-6xl mb-4" style={{ color: 'var(--text-dim)' }}>?</div>
+            <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--foreground)' }}>
               No students found
             </h3>
-            <p className="text-gray-600">
+            <p style={{ color: 'var(--text-muted)' }}>
               Try adjusting your search terms or check the spelling
             </p>
           </div>
@@ -780,9 +793,10 @@ export default function FacultySearchPage() {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-2xl"
+                  style={{ color: 'var(--text-dim)' }}
                 >
-                  ×
+                  x
                 </button>
               </div>
 
@@ -813,8 +827,8 @@ export default function FacultySearchPage() {
                       }`}
                     >
                       {selectedStudent.eventCount >= 2
-                        ? '✓ Meets HOD requirement (2+ events)'
-                        : `✗ Needs ${2 - selectedStudent.eventCount} more event(s)`}
+                        ? '[OK] Meets HOD requirement (2+ events)'
+                        : `[!] Needs ${2 - selectedStudent.eventCount} more event(s)`}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
