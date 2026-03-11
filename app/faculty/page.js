@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Fuse from 'fuse.js'
 import FileUpload from '@/app/components/FileUpload'
+import EventCard from '@/app/components/EventCard'
 
 export default function FacultySearchPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -14,6 +15,8 @@ export default function FacultySearchPage() {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [fuse, setFuse] = useState(null)
   const [fuseInitialized, setFuseInitialized] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [replacingEventIdx, setReplacingEventIdx] = useState(null)
 
   // Merge uploaded data with Supabase data
   const mergeData = useCallback((existingStudents, newUploadData) => {
@@ -110,9 +113,34 @@ export default function FacultySearchPage() {
   }, [students, fuseInitialized])
 
   // Handle upload callback - save to R2 and update state
-  const handleUpload = useCallback((result) => {
+  const handleUpload = useCallback(async (result, isReplace = false, replaceIdx = -1) => {
+    // Delete old file from R2 if replacing
+    if (isReplace && replaceIdx >= 0) {
+      const oldEvent = uploadedData[replaceIdx]
+      if (oldEvent?.r2Key) {
+        try {
+          await fetch('/api/r2/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: oldEvent.r2Key })
+          })
+        } catch (e) {
+          console.warn('Could not delete old file:', e)
+        }
+      }
+    }
+    
     setUploadedData(prev => {
-      const newData = [...prev, result]
+      let newData
+      
+      if (isReplace && replaceIdx >= 0) {
+        // Replace existing event at index
+        newData = [...prev]
+        newData[replaceIdx] = result
+      } else {
+        // Add new event
+        newData = [...prev, result]
+      }
       
       // Merge with existing students
       const mergedStudents = mergeData(students, newData)
@@ -130,10 +158,56 @@ export default function FacultySearchPage() {
       })
       setTotalUniqueEvents(allEvents.size)
       
-      alert(`Successfully uploaded ${result.count} participants for ${result.eventName}. Data will load automatically on next page visit.`)
+      const action = isReplace ? 'replaced' : 'uploaded'
+      alert(`Successfully ${action} ${result.count} participants for ${result.eventName}.`)
       return newData
     })
+    
+    // Close modals
+    setShowUploadModal(false)
+    setReplacingEventIdx(null)
   }, [students, mergeData])
+
+  // Handle replace event
+  const handleReplaceEvent = useCallback((idx) => {
+    setReplacingEventIdx(idx)
+    setShowUploadModal(true)
+  }, [])
+
+  // Handle delete event
+  const handleDeleteEvent = useCallback(async (idx) => {
+    const event = uploadedData[idx]
+    if (!confirm(`Are you sure you want to delete "${event.eventName}"? This will remove it from cloud storage.`)) {
+      return
+    }
+    
+    try {
+      // Delete from R2 via manifest
+      await fetch('/api/r2/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventCode: event.eventCode })
+      })
+      
+      // Update state
+      const newData = uploadedData.filter((_, i) => i !== idx)
+      setUploadedData(newData)
+      
+      // Update merged students
+      const mergedStudents = mergeData(students, newData)
+      setStudents(mergedStudents)
+      
+      // Update unique events count
+      const allEvents = new Set()
+      mergedStudents.forEach(s => {
+        s.events?.forEach(e => allEvents.add(e.eventName?.toLowerCase()))
+      })
+      setTotalUniqueEvents(allEvents.size)
+      
+    } catch (err) {
+      alert('Error deleting event: ' + err.message)
+    }
+  }, [uploadedData, students, mergeData])
 
   // Refresh data from R2
   const refreshFromR2 = useCallback(async () => {
@@ -164,7 +238,13 @@ export default function FacultySearchPage() {
         r2Data.participants?.forEach(p => {
           const code = p.code || p.event
           if (!eventGroups[code]) {
-            eventGroups[code] = { eventName: code.replace(/_/g, ' '), eventCode: code, platform: p.platform, participants: [] }
+            eventGroups[code] = { 
+              eventName: code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), 
+              eventCode: code, 
+              platform: p.platform, 
+              participants: [],
+              r2Key: p.r2Key
+            }
           }
           eventGroups[code].participants.push(p)
         })
@@ -416,44 +496,135 @@ export default function FacultySearchPage() {
           </div>
         </div>
 
-        {/* Uploaded Data Status */}
+        {/* Uploaded Data Status - Collapsible List */}
         {uploadedData.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-blue-900">
-                  ☁️ Loaded {uploadedData.length} event{uploadedData.length !== 1 ? 's' : ''} from Cloud Storage
-                </p>
-                <p className="text-sm text-blue-700 mt-1">
-                  {uploadedData.map(u => `${u.eventName} (${u.participants?.length || 0} participants)`).join(', ')}
-                </p>
+          <div className="bg-white border rounded-lg mb-6 overflow-hidden">
+            <div className="bg-blue-50 px-4 py-3 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">☁️</span>
+                <span className="font-medium text-blue-900">
+                  Loaded Events ({uploadedData.length})
+                </span>
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (!confirm('This will scan R2 for existing files and create a manifest. Continue?')) return
+                    try {
+                      const res = await fetch('/api/r2/scan', { method: 'POST' })
+                      const data = await res.json()
+                      alert(`Found ${data.events?.length || 0} events: ${data.events?.join(', ')}`)
+                      refreshFromR2()
+                    } catch (e) {
+                      alert('Error: ' + e.message)
+                    }
+                  }}
+                  className="px-3 py-1 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded transition-colors"
+                >
+                  🔍 Scan R2
+                </button>
                 <button
                   onClick={refreshFromR2}
                   className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
                 >
                   🔄 Refresh
                 </button>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded transition-colors"
+                >
+                  + Add New Event
+                </button>
               </div>
+            </div>
+            
+            <div className="divide-y">
+              {uploadedData.map((upload, idx) => (
+                <EventCard 
+                  key={idx}
+                  event={upload}
+                  onReplace={() => handleReplaceEvent(idx)}
+                  onDelete={() => handleDeleteEvent(idx)}
+                />
+              ))}
             </div>
           </div>
         )}
 
         {/* No R2 data loaded - show prompt */}
         {uploadedData.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <p className="text-yellow-800">
-              ℹ️ No event data loaded from cloud. Upload CSV files below to get started.
-            </p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <p className="text-yellow-800">
+                ℹ️ No event data loaded from cloud.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/r2/scan', { method: 'POST' })
+                      const data = await res.json()
+                      alert(`Found ${data.events?.length || 0} events: ${data.events?.join(', ')}`)
+                      refreshFromR2()
+                    } catch (e) {
+                      alert('Error: ' + e.message)
+                    }
+                  }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  🔍 Scan R2 for Existing Files
+                </button>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  + Upload New Event
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* File Upload Section */}
-        <FileUpload 
-          onUpload={handleUpload} 
-          disabled={loading} 
-        />
+        {/* Upload Modal */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {replacingEventIdx !== null ? '🔄 Replace Event Data' : '📤 Upload Event Data'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowUploadModal(false)
+                      setReplacingEventIdx(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {replacingEventIdx !== null && uploadedData[replacingEventIdx] && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-orange-800">
+                      <strong>Replacing:</strong> {uploadedData[replacingEventIdx].eventName}
+                      <br />
+                      <span className="text-xs">({uploadedData[replacingEventIdx].participants?.length} participants will be replaced)</span>
+                    </p>
+                  </div>
+                )}
+                
+                <FileUpload 
+                  onUpload={handleUpload} 
+                  disabled={loading}
+                  isReplace={replacingEventIdx !== null}
+                  replacingEvent={replacingEventIdx !== null ? { ...uploadedData[replacingEventIdx], idx: replacingEventIdx } : null}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">

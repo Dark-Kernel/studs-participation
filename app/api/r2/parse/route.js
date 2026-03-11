@@ -1,71 +1,28 @@
 import { NextResponse } from 'next/server'
-import { listR2Files, getR2FileContent } from '@/lib/r2'
+import { getManifest, getR2FileContent, deleteR2File } from '@/lib/r2'
 import { parseFromBuffer } from '@/lib/fileParser'
 
 export async function POST(request) {
   try {
-    const body = await request.json()
-    const eventCodes = body.eventCodes || []
-
-    // Get all files from R2
-    const files = await listR2Files('uploads/')
+    // Get manifest to find current files
+    const manifest = await getManifest()
+    const events = manifest.events || {}
     
-    // Filter by event codes if specified
-    let filteredFiles = files
-    if (eventCodes && eventCodes.length > 0) {
-      filteredFiles = files.filter(file => 
-        eventCodes.some(code => file.key.includes(code))
-      )
-    }
-
-    console.log(`Fetching ${filteredFiles.length} files from R2`)
-
-    // If no files, return early with empty data
-    if (filteredFiles.length === 0) {
-      return NextResponse.json({
-        success: true,
-        files: [],
-        participants: [],
-        totalCount: 0
-      })
-    }
-
-    // Fetch and parse each file
+    console.log('Manifest events:', Object.keys(events))
+    
     const allParticipants = []
     const fileResults = []
 
-    for (const file of filteredFiles) {
+    // Process each event from manifest
+    for (const [eventCode, eventData] of Object.entries(events)) {
       try {
-        // Skip directory markers
-        if (file.key.endsWith('/')) {
-          console.log('Skipping directory:', file.key)
-          continue
-        }
+        const fileKey = eventData.fileKey
+        console.log(`Processing ${eventCode}: ${fileKey}`)
         
-        // Extract event code from filename
-        const fullFileName = file.key.replace('uploads/', '')
-        const fileExtension = fullFileName.split('.').pop()?.toLowerCase()
-        const eventCode = fullFileName.replace(/\.[^/.]+$/, '').split('_')[0]
+        const buffer = await getR2FileContent(fileKey)
+        console.log(`Buffer size: ${buffer.length} bytes`)
         
-        console.log(`Processing file: ${file.key}, extension: ${fileExtension}`)
-        
-        // Fetch file content directly from R2
-        let buffer
-        try {
-          buffer = await getR2FileContent(file.key)
-          console.log(`Buffer size: ${buffer.length} bytes`)
-        } catch (fetchError) {
-          console.error(`Failed to fetch ${file.key}:`, fetchError.message)
-          continue
-        }
-        
-        if (!buffer || buffer.length === 0) {
-          console.log('Skipping empty file:', file.key)
-          continue
-        }
-        
-        // Parse using buffer
-        const parsed = await parseFromBuffer(buffer, fullFileName)
+        const parsed = await parseFromBuffer(buffer, fileKey)
         
         const participants = parsed.data.map(row => ({
           name: row.name,
@@ -78,21 +35,23 @@ export async function POST(request) {
           department: row.department || null,
           yearOfStudy: row.yearOfStudy || null,
           registrationTime: row.registrationTime || new Date().toISOString(),
-          r2Key: file.key
+          r2Key: fileKey
         }))
         
         allParticipants.push(...participants)
         
         fileResults.push({
-          key: file.key,
+          key: fileKey,
           eventCode,
-          platform: parsed.platform,
+          eventName: eventData.eventName,
+          platform: eventData.platform,
+          updatedAt: eventData.updatedAt,
           count: participants.length
         })
         
-        console.log(`Parsed ${participants.length} participants from ${file.key}`)
-      } catch (fileError) {
-        console.error(`Error parsing file ${file.key}:`, fileError)
+        console.log(`Parsed ${participants.length} from ${eventCode}`)
+      } catch (err) {
+        console.error(`Error processing ${eventCode}:`, err.message)
       }
     }
 

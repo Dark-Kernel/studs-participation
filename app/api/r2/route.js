@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { uploadToR2, listR2Files } from '@/lib/r2'
+import { uploadToR2, updateEventInManifest, deleteR2File } from '@/lib/r2'
 import { parseFile } from '@/lib/fileParser'
 
 export async function POST(request) {
@@ -24,10 +24,15 @@ export async function POST(request) {
     const key = `uploads/${eventCode}_${timestamp}.${extension}`
 
     // Upload to R2
-    const url = await uploadToR2(file, key)
+    await uploadToR2(file, key)
 
     // Parse the file
     const parsed = await parseFile(file)
+
+    // Update manifest - this handles replacing old file reference
+    const oldKey = await updateEventInManifest(eventCode, key, eventName, parsed.platform)
+    
+    console.log(`Updated manifest for ${eventCode}, old file was: ${oldKey}`)
 
     return NextResponse.json({
       success: true,
@@ -35,8 +40,8 @@ export async function POST(request) {
       count: parsed.count,
       eventName,
       eventCode,
-      key,
-      url,
+      r2Key: key,
+      oldR2Key: oldKey, // Return old key so frontend can delete if needed
       participants: parsed.data.map(row => ({
         name: row.name,
         email: row.email || null,
@@ -54,30 +59,5 @@ export async function POST(request) {
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json({ error: error.message || 'Failed to upload' }, { status: 500 })
-  }
-}
-
-export async function GET() {
-  try {
-    const files = await listR2Files('uploads/')
-    
-    // Parse file names to extract event info
-    const fileInfo = files.map(file => {
-      const filename = file.key.replace('uploads/', '').replace('.csv', '').replace('.xlsx', '').replace('.xls', '')
-      const parts = filename.split('_')
-      const eventCode = parts[0]
-      const timestamp = parts.slice(1).join('_')
-      
-      return {
-        ...file,
-        eventCode,
-        originalName: file.key.replace('uploads/', '')
-      }
-    })
-
-    return NextResponse.json({ files: fileInfo })
-  } catch (error) {
-    console.error('List files error:', error)
-    return NextResponse.json({ error: 'Failed to list files' }, { status: 500 })
   }
 }

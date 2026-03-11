@@ -11,7 +11,7 @@ const EVENT_OPTIONS = [
   { name: "ProtoTech", code: "prototech" },
 ]
 
-export default function FileUpload({ onUpload, disabled }) {
+export default function FileUpload({ onUpload, disabled, isReplace = false, replacingEvent = null }) {
   const [dragActive, setDragActive] = useState(false)
   const [file, setFile] = useState(null)
   const [parsing, setParsing] = useState(false)
@@ -19,6 +19,17 @@ export default function FileUpload({ onUpload, disabled }) {
   const [eventCode, setEventCode] = useState('')
   const [isCustomEvent, setIsCustomEvent] = useState(false)
   const inputRef = useRef(null)
+
+  // Pre-fill for replace mode
+  useEffect(() => {
+    if (isReplace && replacingEvent) {
+      setEventName(replacingEvent.eventName)
+      setEventCode(replacingEvent.eventCode)
+      // Check if it's a custom event
+      const isPreset = EVENT_OPTIONS.some(e => e.name === replacingEvent.eventName)
+      setIsCustomEvent(!isPreset)
+    }
+  }, [isReplace, replacingEvent])
 
   // Auto-fill event code when event name changes
   useEffect(() => {
@@ -102,7 +113,7 @@ export default function FileUpload({ onUpload, disabled }) {
       }
 
       const result = await response.json()
-      onUpload(result)
+      onUpload(result, isReplace, replacingEvent?.idx)
       
       // Reset form
       setFile(null)
